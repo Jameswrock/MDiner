@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Middleton Diner Ledger</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        form { margin-bottom: 20px; }
+        input { margin-right: 10px; margin-bottom: 10px; padding: 5px; }
+        button { padding: 5px 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .delete-btn { background-color: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+    </style>
+  
+</head>
+<body>
+    <h1>Record Manager</h1>
+    
+    <form id="recordForm">
+ 	<input type="date" id="date" placeholder="Date" required>       
+ 	<input type="text" id="firstName" placeholder="First Name" required>
+        <input type="text" id="lastName" placeholder="Last Name" required>
+        <input type="number" id="age" placeholder="Age" required min="0">
+        <input type="number" id="income" placeholder="Income ($)" required min="0" step="0.01">
+        <input type="number" id="expense" placeholder="Expense ($)" required min="0" step="0.01">
+        <button type="submit">Add Record</button>
+    </form>
+    
+    <table id="recordsTable">
+        <thead>
+            <tr>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Age</th>
+                <th>Income ($)</th>
+                <th>Expense ($)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    
+    <button id="exportBtn">Export to CSV</button>
+    
+    <script>
+        const STORAGE_KEY = 'records';
+        
+        // Load records from localStorage
+        function loadRecords() {
+            const csv = localStorage.getItem(STORAGE_KEY);
+            if (!csv) return [];
+            const lines = csv.split('\n').filter(line => line.trim());
+            const records = lines.slice(1).map(line => {
+                const [firstName, lastName, age, income, expense] = line.split(',');
+                return { 
+                    firstName, 
+                    lastName, 
+                    age: parseInt(age), 
+                    income: parseFloat(income), 
+                    expense: parseFloat(expense) 
+                };
+            });
+            return records;
+        }
+        
+        // Save records to localStorage as CSV string
+        function saveRecords(records) {
+            const header = 'FirstName,LastName,Age,Income,Expense';
+            const rows = records.map(r => `${r.firstName},${r.lastName},${r.age},${r.income},${r.expense}`);
+            const csv = [header, ...rows].join('\n');
+            localStorage.setItem(STORAGE_KEY, csv);
+        }
+        
+        // Render records in table
+        function renderRecords() {
+            const records = loadRecords();
+            const tbody = document.querySelector('#recordsTable tbody');
+            tbody.innerHTML = '';
+            records.forEach((record, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${record.firstName}</td>
+                    <td>${record.lastName}</td>
+                    <td>${record.age}</td>
+                    <td>${record.income.toFixed(2)}</td>
+                    <td>${record.expense.toFixed(2)}</td>
+                    <td><button class="delete-btn" data-index="${index}">Delete</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // Add record
+        document.getElementById('recordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const age = parseInt(document.getElementById('age').value);
+            const income = parseFloat(document.getElementById('income').value);
+            const expense = parseFloat(document.getElementById('expense').value);
+            if (firstName && lastName && !isNaN(age) && !isNaN(income) && !isNaN(expense)) {
+                const records = loadRecords();
+                records.push({ firstName, lastName, age, income, expense });
+                saveRecords(records);
+                renderRecords();
+                e.target.reset();
+            }
+        });
+        
+        // Delete record
+        document.querySelector('#recordsTable').addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const index = parseInt(e.target.dataset.index);
+                const records = loadRecords();
+                records.splice(index, 1);
+                saveRecords(records);
+                renderRecords();
+            }
+        });
+        
+        // Export to CSV
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const csv = localStorage.getItem(STORAGE_KEY);
+            if (csv) {
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'records.csv';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        });
+        
+        // Initial render
+        renderRecords();
+    </script>
+</body>
+</html>
